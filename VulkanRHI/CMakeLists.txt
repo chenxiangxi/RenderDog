@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.19.2)
+project(VulkanRHI)
+
+add_definitions(-DLIBRARY_EXPORTS)
+
+source_group("include" REGULAR_EXPRESSION "include/*")
+source_group("src" REGULAR_EXPRESSION "src/*")
+file(GLOB_RECURSE CPP_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h)
+set(VulkanRHI_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include CACHE PATH "VulkanRHI include directory")
+include_directories(${VulkanRHI_INCLUDE})
+
+find_package(Vulkan)
+if(Vulkan_FOUND)
+    set(VULKAN_PATH ${Vulkan_INCLUDE_DIRS})
+    STRING(REGEX REPLACE "/Include" "" VULKAN_PATH ${VULKAN_PATH})
+else()
+    set(VULKAN_PATH "C:/VulkanSDK/1.1.85.0")
+endif()
+add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+set(VULKAN_LINK_LIST "vulkan-1")
+include_directories(AFTER ${VULKAN_PATH}/Include)
+
+add_library(${PROJECT_NAME} SHARED ${CPP_FILES} ${HEADER_FILES})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${Vulkan_LIBRARIES})
