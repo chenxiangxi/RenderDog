@@ -2,7 +2,7 @@
 
 static std::string AppName = "RenderDog";
 static uint32_t AppVersion = 1;
-static std::string EngineName = "Vulkan.hpp";
+static std::string EngineName = "Vulkan";
 static uint32_t EngineVersion = 1;
 
 void VulkanApplication::init() {
@@ -13,17 +13,7 @@ void VulkanApplication::init() {
     catch (vk::SystemError& err)
     {
         std::cout << "vk::SystemError: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (std::exception& err)
-    {
-        std::cout << "std::exception: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (...)
-    {
-        std::cout << "unknown error\n";
-        exit(-1);
+        throw err;
     }
 }
 
@@ -32,39 +22,75 @@ void VulkanApplication::destroy() {
 }
 
 void VulkanApplication::createInstance() {
-    vk::ApplicationInfo applicationInfo(AppName.c_str(), AppVersion, EngineName.c_str(), EngineVersion, VK_API_VERSION_1_1);
+    vk::ApplicationInfo appInfo = vk::ApplicationInfo(AppName.c_str(), AppVersion, EngineName.c_str(), EngineVersion, VK_API_VERSION_1_1);
+    vk::InstanceCreateInfo instanceCreateInfo({}, &appInfo);
 
-    std::vector<const char*> requiredExtensionProperties;
-    requiredExtensionProperties.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    std::vector<const char*> instanceExtensionProperties = getInstanceExtensionProperties(requiredExtensionProperties);
+    auto extensionNames = updateInstanceExtensionProperties();
+    instanceCreateInfo.setEnabledExtensionCount(extensionNames.size());
+    instanceCreateInfo.setPpEnabledExtensionNames(extensionNames.data());
 
-    vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo);
-    instanceCreateInfo.setEnabledExtensionCount(instanceExtensionProperties.size());
-    instanceCreateInfo.setPpEnabledExtensionNames(instanceExtensionProperties.data());
-
+    auto layerNames = updateInstanceLayerProperties();
+    instanceCreateInfo.setEnabledLayerCount(layerNames.size());
+    instanceCreateInfo.setPpEnabledLayerNames(layerNames.data());
     m_instance = vk::createInstance(instanceCreateInfo);
 }
 
-std::vector<const char*> VulkanApplication::getInstanceExtensionProperties(const std::vector<const char*> requiredExtensionProperties) {
+std::vector<const char*> VulkanApplication::updateInstanceExtensionProperties() {
+    std::vector<const char*> requiredProperties = {
+        VK_KHR_SURFACE_EXTENSION_NAME
+    };
+    return getInstanceExtensionProperties(requiredProperties);
+}
+
+std::vector<const char*> VulkanApplication::getInstanceExtensionProperties(const std::vector<const char*> requiredProperties) {
     uint32_t count = 0;
     vk::enumerateInstanceExtensionProperties(nullptr, &count, nullptr);
     if (count == 0) return std::vector<const char*>();
 
-    vk::ExtensionProperties* properties = new vk::ExtensionProperties[count];
-    vk::enumerateInstanceExtensionProperties(nullptr, &count, properties);
+    std::vector<vk::ExtensionProperties> properties;
+    properties.resize(count);
+    vk::enumerateInstanceExtensionProperties(nullptr, &count, properties.data());
 
     std::vector<const char*> propertyNames;
 
-    std::for_each(requiredExtensionProperties.begin(), requiredExtensionProperties.end(), [&](const char* extName) {
+    std::for_each(requiredProperties.begin(), requiredProperties.end(), [&](const char* extName) {
         for (int i = 0; i < count; ++i) {
             if (std::strcmp(extName, properties[i].extensionName) == 0) {
-                propertyNames.push_back(properties[i].extensionName);
+                propertyNames.push_back(extName);
                 break;
             }
         }
      });
 
-
     return propertyNames;
 }
 
+std::vector<const char*> VulkanApplication::updateInstanceLayerProperties() {
+    std::vector<const char*> requiredLayerNames = {
+        "VK_LAYER_LUNARG_api_dump"
+    };
+    return getInstanceLayerProperties(requiredLayerNames);
+}
+
+std::vector<const char*> VulkanApplication::getInstanceLayerProperties(const std::vector<const char*> requiredProperties) {
+    uint32_t count;
+    vkEnumerateInstanceLayerProperties(&count, nullptr);
+    if (0 == count) return std::vector<const char*>();
+
+    std::vector<VkLayerProperties> properties;
+    properties.resize(count);
+    vkEnumerateInstanceLayerProperties(&count, properties.data());
+
+    std::vector<const char*> propertyNames;
+
+    std::for_each(requiredProperties.begin(), requiredProperties.end(), [&](const char* layerName) {
+        for (int i = 0; i < count; ++i) {
+            if (std::strcmp(layerName, properties[i].layerName) == 0) {
+                propertyNames.push_back(layerName);
+                break;
+            }
+        }
+        });
+
+    return propertyNames;
+}
