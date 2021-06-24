@@ -1,20 +1,15 @@
 #include "VulkanRHI.h"
-#include "vulkan/vulkan.hpp"
+#include "VulkanApplication.h"
 
-void VulkanRHI::Init() {
+VulkanRHI::~VulkanRHI() {
+    delete m_Application;
+}
+
+void VulkanRHI::init() {
     try
     {
-        // initialize the vk::ApplicationInfo structure
-        vk::ApplicationInfo applicationInfo("test", 1, "test", 1, VK_API_VERSION_1_1);
-
-        // initialize the vk::InstanceCreateInfo
-        vk::InstanceCreateInfo instanceCreateInfo({}, &applicationInfo);
-
-        // create an Instance
-        vk::Instance instance = vk::createInstance(instanceCreateInfo);
-
-        // destroy it again
-        instance.destroy();
+        m_Application = new VulkanApplication();
+        m_Application->init();
     }
     catch (vk::SystemError& err)
     {
@@ -32,3 +27,8 @@ void VulkanRHI::Init() {
         exit(-1);
     }
 }
+
+void VulkanRHI::destroy() {
+    m_Application->destroy();
+}
+

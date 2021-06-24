@@ -8,7 +8,8 @@ int Factorial(int n)
 
 TEST(FactorialTest, HandlesZeroInput) {
 	VulkanRHI vulkan;
-	vulkan.Init();
+	vulkan.init();
+	vulkan.destroy();
 
 	EXPECT_EQ(Factorial(1), 1);
 }

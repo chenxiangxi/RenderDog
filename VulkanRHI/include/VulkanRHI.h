@@ -1,7 +1,15 @@
 #pragma once
 #include "Common.h"
 
+class VulkanApplication;
+
 class LIBRARY_API VulkanRHI {
 public:
-	virtual void Init();
+	~VulkanRHI();
+
+	virtual void init();
+	virtual void destroy();
+
+private:
+	VulkanApplication* m_Application;
 };
