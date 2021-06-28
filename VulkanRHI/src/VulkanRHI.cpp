@@ -9,7 +9,11 @@ void VulkanRHI::init() {
     try
     {
         m_Application = new VulkanApplication();
-        m_Application->init();
+
+        std::vector<const char*> requiredInstanceExtensionNames = { VK_KHR_SURFACE_EXTENSION_NAME };
+        std::vector<const char*> requiredInstanceLayerNames = { "VK_LAYER_LUNARG_api_dump" };
+        std::vector<const char*> requiredDeviceExtensionNames = {};
+        m_Application->init(requiredInstanceExtensionNames, requiredInstanceLayerNames, requiredDeviceExtensionNames);
     }
     catch (vk::SystemError& err)
     {
