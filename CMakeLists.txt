@@ -18,3 +18,5 @@ add_subdirectory(ThirdParty)
 add_subdirectory(Core)
 add_subdirectory(VulkanRHI)
 add_subdirectory(VulkanRHIUnitTest)
+
+add_subdirectory(BIMViewer)

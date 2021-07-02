@@ -32,5 +32,22 @@ std::vector<const char*> VulkanUtils::filterLayerNames(const std::vector<vk::Lay
 }
 
 int VulkanUtils::cmpDeviceType(vk::PhysicalDeviceType left, vk::PhysicalDeviceType right) {
-    return 0;
+    auto getPriority = [](vk::PhysicalDeviceType deviceType) {
+        switch (deviceType) {
+        case vk::PhysicalDeviceType::eDiscreteGpu:
+            return 0;
+        case vk::PhysicalDeviceType::eVirtualGpu:
+            return 1;
+        case vk::PhysicalDeviceType::eIntegratedGpu:
+            return 2;
+        case vk::PhysicalDeviceType::eCpu:
+            return 3;
+        default:
+            return 4;
+        }
+    };
+
+    int leftPriority = getPriority(left);
+    int rightPriority = getPriority(right);
+    return leftPriority > rightPriority ? 1 : (leftPriority < rightPriority ? -1 : 0);
 }

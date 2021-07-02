@@ -25,8 +25,16 @@ void VulkanApplication::init(const std::vector<const char*>& requiredInstanceExt
     }
 }
 
+void VulkanApplication::render() {
+
+}
+
 void VulkanApplication::destroy() {
     m_instance.destroy();
+}
+
+void VulkanApplication::createSurface(HWND hInstance) {
+    m_currentDevice.createSurface(hInstance);
 }
 
 void VulkanApplication::createInstance() {
@@ -67,7 +75,7 @@ void VulkanApplication::createDeviceDefault() {
         vk::PhysicalDeviceMemoryProperties memProperties;
         physicalDevice.getMemoryProperties(&memProperties);
 
-        if (properties.deviceType < optimalProperties.deviceType || 
+        if (VulkanUtils::cmpDeviceType(properties.deviceType, optimalProperties.deviceType) < 0 || 
             memProperties.memoryHeapCount > optimalMemProperties.memoryHeapCount) {
             optimalPhysicalDevice = physicalDevice;
             optimalProperties = properties;
@@ -79,8 +87,6 @@ void VulkanApplication::createDeviceDefault() {
 
     m_currentDevice.init(m_requiredDeviceExtensionNames);
 }
-
-
 
 void VulkanApplication::enumerateSuitablePhysicalDevices() {
     uint32_t count;
@@ -100,7 +106,7 @@ void VulkanApplication::enumerateSuitablePhysicalDevices() {
         physicalDevice.getFeatures(&features);
         if (!features.geometryShader) return;
 
-        VulkanDevice vulkanDevice(physicalDevice);
+        VulkanDevice vulkanDevice(m_instance, physicalDevice);
         m_devices.push_back(vulkanDevice);
         });
 }

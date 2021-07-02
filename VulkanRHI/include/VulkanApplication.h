@@ -9,6 +9,8 @@ public:
 		const std::vector<const char*>& requiredInstanceLayerNames = { "VK_LAYER_LUNARG_api_dump" },
 		const std::vector<const char*>& requiredDeviceExtensionNames = {});
 
+	void render();
+	void createSurface(HWND hInstance);
 	void destroy();
 
 	const std::vector<const char*>& getInstanceExtensionNames() {
