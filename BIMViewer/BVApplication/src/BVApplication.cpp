@@ -24,7 +24,7 @@ void BVApplication::initMainWindow() {
 	m_canvas = new Canvas();
 
 	auto layout = new QHBoxLayout();
-	layout->addWidget(QWidget::createWindowContainer(m_canvas));
+	layout->addWidget(m_canvas);
 	layout->setMargin(0);
 
 	auto centralWidget = new QWidget();

@@ -11,11 +11,14 @@ void Canvas::init() {
 	if (m_renderer) return;
 
 	m_renderer = new Renderer(new VulkanRHI());
-	m_renderer->getRHI()->init();
-	m_renderer->getRHI()->createSurface((HWND)this->winId());
+	m_renderer->getRHI()->init((HWND)this->winId());
 }
 
 void Canvas::showEvent(QShowEvent* event) {
-	QWindow::showEvent(event);
+	QWidget::showEvent(event);
 	init();
+}
+
+void Canvas::paintEvent(QPaintEvent* event) {
+	m_renderer->getRHI()->render();
 }

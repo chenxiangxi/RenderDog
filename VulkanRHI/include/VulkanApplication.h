@@ -7,10 +7,9 @@ class VulkanApplication {
 public:
 	void init(const std::vector<const char*>& requiredInstanceExtensionNames = { VK_KHR_SURFACE_EXTENSION_NAME },
 		const std::vector<const char*>& requiredInstanceLayerNames = { "VK_LAYER_LUNARG_api_dump" },
-		const std::vector<const char*>& requiredDeviceExtensionNames = {});
+		const std::vector<const char*>& requiredDeviceExtensionNames = {}, void* hwnd = nullptr);
 
 	void render();
-	void createSurface(HWND hInstance);
 	void destroy();
 
 	const std::vector<const char*>& getInstanceExtensionNames() {
@@ -30,18 +29,18 @@ public:
 	}
 
 private:
-	void createInstance();
-	void createDeviceDefault();
-	void enumerateSuitablePhysicalDevices();
+	void createInstance(void* hwnd);
+	void createDeviceDefault(void* hwnd);
+	void enumerateSuitablePhysicalDevices(void* hwnd);
 
 	std::vector<const char*> getInstanceExtensionNames(const std::vector<const char*>& requiredNames);
 	std::vector<const char*> getInstanceLayerNames(const std::vector<const char*>& requiredNames);
-	std::vector<const char*> filterExtensionNames(const std::vector<vk::ExtensionProperties>& properties, const std::vector<const char*>& requiredNames);
-	std::vector<const char*> filterLayerNames(const std::vector<vk::LayerProperties>& properties, const std::vector<const char*>& requiredNames);
+	std::vector<const char*> filterExtensionNames(const std::vector<VkExtensionProperties>& properties, const std::vector<const char*>& requiredNames);
+	std::vector<const char*> filterLayerNames(const std::vector<VkLayerProperties>& properties, const std::vector<const char*>& requiredNames);
 
-	vk::Instance m_instance;
-	std::vector<VulkanDevice> m_devices;
-	VulkanDevice m_currentDevice;
+	VkInstance m_instance;
+	std::vector<std::shared_ptr<VulkanDevice>> m_devices;
+	std::shared_ptr<VulkanDevice> m_currentDevice;
 
 	std::vector<const char*> m_instanceExtensionNames;
 	std::vector<const char*> m_instanceLayerNames;

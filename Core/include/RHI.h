@@ -10,8 +10,7 @@ class LIBRARY_API RHI {
 public:
 	RHI();
 
-	virtual void init() = 0;
-	virtual void createSurface(HWND hInstance) = 0;
+	virtual void init(void* hwnd = nullptr) = 0;
 	virtual void render() = 0;
 	virtual void destroy() = 0;
 };

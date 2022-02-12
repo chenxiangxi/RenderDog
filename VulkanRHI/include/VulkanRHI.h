@@ -13,8 +13,7 @@ class LIBRARY_API VulkanRHI : public RHI {
 public:
 	VulkanRHI();
 	~VulkanRHI();
-	virtual void init();
-	virtual void createSurface(HWND hInstance);
+	virtual void init(void* hwnd = nullptr);
 	virtual void render();
 	virtual void destroy();
 

@@ -7,16 +7,15 @@ static uint32_t AppVersion = 1;
 static std::string EngineName = "Vulkan";
 static uint32_t EngineVersion = 1;
 
-void VulkanApplication::init(const std::vector<const char*>& requiredInstanceExtensionNames,
-    const std::vector<const char*>& requiredInstanceLayerNames,
-    const std::vector<const char*>& requiredDeviceExtensionNames) {
+void VulkanApplication::init(const std::vector<const char*>& requiredInstanceExtensionNames, const std::vector<const char*>& requiredInstanceLayerNames,
+    const std::vector<const char*>& requiredDeviceExtensionNames, void* hwnd) {
     try
     {
         m_requiredInstanceExtensionNames = requiredInstanceExtensionNames;
         m_requiredInstanceLayerNames = requiredInstanceLayerNames;
         m_requiredDeviceExtensionNames = requiredDeviceExtensionNames;
 
-        createInstance();
+        createInstance(hwnd);
     }
     catch (vk::SystemError& err)
     {
@@ -30,88 +29,71 @@ void VulkanApplication::render() {
 }
 
 void VulkanApplication::destroy() {
-    m_instance.destroy();
+    vkDestroyInstance(m_instance, nullptr);
 }
 
-void VulkanApplication::createSurface(HWND hInstance) {
-    m_currentDevice.createSurface(hInstance);
-}
+void VulkanApplication::createInstance(void* hwnd) {
+    VkApplicationInfo appInfo = {};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = AppName.c_str();
+    appInfo.applicationVersion = AppVersion;
+    appInfo.pEngineName = EngineName.c_str();
+    appInfo.engineVersion = EngineVersion;
+    appInfo.apiVersion = VK_API_VERSION_1_2;
 
-void VulkanApplication::createInstance() {
-    vk::ApplicationInfo appInfo = vk::ApplicationInfo(AppName.c_str(), AppVersion, EngineName.c_str(), EngineVersion, VK_API_VERSION_1_1);
-    vk::InstanceCreateInfo instanceCreateInfo({}, &appInfo);
+    VkInstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.pApplicationInfo = &appInfo;
 
     m_instanceExtensionNames = getInstanceExtensionNames(m_requiredInstanceExtensionNames);
-    instanceCreateInfo.setEnabledExtensionCount(m_instanceExtensionNames.size());
-    instanceCreateInfo.setPpEnabledExtensionNames(m_instanceExtensionNames.data());
+    instanceCreateInfo.enabledExtensionCount = m_instanceExtensionNames.size();
+    instanceCreateInfo.ppEnabledExtensionNames = m_instanceExtensionNames.data();
 
     m_instanceLayerNames = getInstanceLayerNames(m_requiredInstanceLayerNames);
-    instanceCreateInfo.setEnabledLayerCount(m_instanceLayerNames.size());
-    instanceCreateInfo.setPpEnabledLayerNames(m_instanceLayerNames.data());
-    m_instance = vk::createInstance(instanceCreateInfo);
+    instanceCreateInfo.enabledLayerCount = m_instanceLayerNames.size();
+    instanceCreateInfo.ppEnabledLayerNames = m_instanceLayerNames.data();
+    auto result = vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance);
 
-    enumerateSuitablePhysicalDevices();
-    createDeviceDefault();
+    enumerateSuitablePhysicalDevices(hwnd);
+    createDeviceDefault(hwnd);
 }
 
-void VulkanApplication::createDeviceDefault() {
+void VulkanApplication::createDeviceDefault(void* hwnd) {
     if (m_devices.size() == 0) throw "Cannot find device";
 
-    vk::PhysicalDevice optimalPhysicalDevice;
-    vk::PhysicalDeviceProperties optimalProperties;
-    vk::PhysicalDeviceMemoryProperties optimalMemProperties;
-    for (auto i = 0; i < m_devices.size(); ++i) {
-        auto physicalDevice = m_devices[i].getPhysicalDevice();
-        if (!optimalPhysicalDevice) {
-            optimalPhysicalDevice = physicalDevice;
-            physicalDevice.getProperties(&optimalProperties);
-            physicalDevice.getMemoryProperties(&optimalMemProperties);
-            m_currentDevice = m_devices[i];
-            continue;
-        }
-
-        vk::PhysicalDeviceProperties properties;
-        physicalDevice.getProperties(&properties);
-        vk::PhysicalDeviceMemoryProperties memProperties;
-        physicalDevice.getMemoryProperties(&memProperties);
-
-        if (VulkanUtils::cmpDeviceType(properties.deviceType, optimalProperties.deviceType) < 0 || 
-            memProperties.memoryHeapCount > optimalMemProperties.memoryHeapCount) {
-            optimalPhysicalDevice = physicalDevice;
-            optimalProperties = properties;
-            optimalMemProperties = memProperties;
-            m_currentDevice = m_devices[i];
-            continue;
-        }
-    }
-
-    m_currentDevice.init(m_requiredDeviceExtensionNames);
+    m_currentDevice = VulkanDevice::findOpticalDevice(m_devices);
+    m_currentDevice->init(m_requiredDeviceExtensionNames, hwnd);
 }
 
-void VulkanApplication::enumerateSuitablePhysicalDevices() {
+void VulkanApplication::enumerateSuitablePhysicalDevices(void* hwnd) {
     uint32_t count;
-    m_instance.enumeratePhysicalDevices(&count, nullptr);
+    vkEnumeratePhysicalDevices(m_instance, &count, nullptr);
 
-    std::vector<vk::PhysicalDevice> physicalDevices(count);
-    m_instance.enumeratePhysicalDevices(&count, physicalDevices.data());
+    std::vector<VkPhysicalDevice> physicalDevices(count);
+    vkEnumeratePhysicalDevices(m_instance, &count, physicalDevices.data());
 
-    std::for_each(physicalDevices.begin(), physicalDevices.end(), [&](vk::PhysicalDevice& physicalDevice) {
-        vk::PhysicalDeviceProperties properties;
-        physicalDevice.getProperties(&properties);
-        if (properties.deviceType != vk::PhysicalDeviceType::eDiscreteGpu && 
-            properties.deviceType != vk::PhysicalDeviceType::eIntegratedGpu && 
-            properties.deviceType != vk::PhysicalDeviceType::eVirtualGpu) return;
+    std::for_each(physicalDevices.begin(), physicalDevices.end(), [&](VkPhysicalDevice& physicalDevice) {
+        uint32_t count;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, nullptr);
+        std::vector<VkExtensionProperties> extensionProperties(count);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, extensionProperties.data());
+        auto availableExtensionProperties = filterExtensionNames(extensionProperties, m_requiredDeviceExtensionNames);
+        if (availableExtensionProperties.size() != m_requiredDeviceExtensionNames.size()) return;
 
-        vk::PhysicalDeviceFeatures features;
-        physicalDevice.getFeatures(&features);
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+        if (properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+            properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU &&
+            properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU) return;
+
+        VkPhysicalDeviceFeatures features;
+        vkGetPhysicalDeviceFeatures(physicalDevice, &features);
         if (!features.geometryShader) return;
 
-        VulkanDevice vulkanDevice(m_instance, physicalDevice);
-        m_devices.push_back(vulkanDevice);
+        m_devices.push_back(std::make_shared<VulkanDevice>(m_instance, physicalDevice));
         });
 }
 
-std::vector<const char*> VulkanApplication::filterExtensionNames(const std::vector<vk::ExtensionProperties>& properties, const std::vector<const char*>& requiredNames) {
+std::vector<const char*> VulkanApplication::filterExtensionNames(const std::vector<VkExtensionProperties>& properties, const std::vector<const char*>& requiredNames) {
     std::vector<const char*> propertyNames;
 
     std::for_each(requiredNames.begin(), requiredNames.end(), [&](const char* extName) {
@@ -128,16 +110,16 @@ std::vector<const char*> VulkanApplication::filterExtensionNames(const std::vect
 
 std::vector<const char*> VulkanApplication::getInstanceExtensionNames(const std::vector<const char*>& requiredNames) {
     uint32_t count = 0;
-    vk::enumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
     if (count == 0) return std::vector<const char*>();
 
-    std::vector<vk::ExtensionProperties> properties(count);
-    vk::enumerateInstanceExtensionProperties(nullptr, &count, properties.data());
+    std::vector<VkExtensionProperties> properties(count);
+    vkEnumerateInstanceExtensionProperties(nullptr, &count, properties.data());
 
     return VulkanUtils::filterExtensionNames(properties, requiredNames);
 }
 
-std::vector<const char*> VulkanApplication::filterLayerNames(const std::vector<vk::LayerProperties>& properties, const std::vector<const char*>& requiredNames) {
+std::vector<const char*> VulkanApplication::filterLayerNames(const std::vector<VkLayerProperties>& properties, const std::vector<const char*>& requiredNames) {
     std::vector<const char*> propertyNames;
 
     std::for_each(requiredNames.begin(), requiredNames.end(), [&](const char* layerName) {
@@ -154,11 +136,11 @@ std::vector<const char*> VulkanApplication::filterLayerNames(const std::vector<v
 
 std::vector<const char*> VulkanApplication::getInstanceLayerNames(const std::vector<const char*>& requiredNames) {
     uint32_t count;
-    vk::enumerateInstanceLayerProperties(&count, nullptr);
+    vkEnumerateInstanceLayerProperties(&count, nullptr);
     if (0 == count) return std::vector<const char*>();
 
-    std::vector<vk::LayerProperties> properties(count);
-    vk::enumerateInstanceLayerProperties(&count, properties.data());
+    std::vector<VkLayerProperties> properties(count);
+    vkEnumerateInstanceLayerProperties(&count, properties.data());
 
     return VulkanUtils::filterLayerNames(properties, requiredNames);
 }
